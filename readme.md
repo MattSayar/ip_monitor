@@ -1,6 +1,6 @@
 # Public IP Address Monitor
 
-A bash script that monitors your public IP address for changes, logs the information, and updates your IP with NextDNS. When changes are detected, it sends notifications via ntfy.sh.
+A bash script that monitors your public IP address for changes, logs the information, and updates your IP with NextDNS. When changes are detected, it sends notifications via ntfy.sh. In my case, runs from a Raspberry Pi.
 
 - Monitors public IP address changes
 - Sends notifications when IP changes occur
@@ -21,4 +21,5 @@ IP_SERVICE="https://ipinfo.io?token=YOUR_IPINFO_TOKEN"  # Add your ipinfo.io tok
 NTFY_TOPIC="YOUR_NTFY_TOPIC"                              # Add your ntfy.sh topic
 "YOUR_NEXTDNS_PROFILE"                               # Add your NextDNS profile id
 "YOUR_NEXTDNS_IP_LINK_URL"                   # Add your unique NextDNS IP link URL
+"YOUR_EMAIL"                                        # email for ntfy.sh to send to
 ```
