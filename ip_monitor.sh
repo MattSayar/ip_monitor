@@ -1,12 +1,11 @@
 #!/bin/bash
-# Minimal IP Monitoring Script
 # Configuration
 LOG_DIR="/home/pi/ip_logs"
 LOG_FILE="$LOG_DIR/$(date +%Y-%m).csv"
 MAX_RETRIES=3
 RETRY_DELAY=5
-IP_SERVICE="https://ipinfo.io?token=YOUR_IPINFO_TOKEN"  # Your ipinfo.io token
-NTFY_TOPIC="YOUR_NTFY_TOPIC"  # Your ntfy.sh topic
+IP_SERVICE="https://ipinfo.io?token=YOUR_IPINFO_TOKEN"
+NTFY_TOPIC="YOUR_NTFY_TOPIC"
 
 # Create log directory if missing
 mkdir -p "$LOG_DIR"
@@ -34,13 +33,33 @@ send_notification() {
     local title="$1"
     local message="$2"
     local priority="$3"
-
+    
     curl -s -H "Title: $title" \
          -H "Priority: $priority" \
          -H "Tags: network,ip" \
          -d "$message" \
-     -H "email:YOUR_EMAIL"\
+         -H "email:YOUR_EMAIL" \
          ntfy.sh/$NTFY_TOPIC
+}
+
+# Function to get the last valid IP from log file
+get_last_valid_ip() {
+    local log_file="$1"
+    local last_ip=""
+    
+    # Read the file line by line, ignoring the header and empty entries
+    while IFS= read -r line; do
+        # Extract IP (second column)
+        ip_field=$(echo "$line" | cut -d, -f2)
+        
+        # If it's not empty, not "ip" (header), and not "error"
+        if [ -n "$ip_field" ] && [ "$ip_field" != "ip" ] && [ "$ip_field" != "error" ]; then
+            # Found a valid IP, save it
+            last_ip="$ip_field"
+        fi
+    done < "$log_file"
+    
+    echo "$last_ip"
 }
 
 # Main execution
@@ -57,28 +76,31 @@ if [ $? -eq 0 ]; then
     org=$(echo "$response" | jq -r '.org')
     postal=$(echo "$response" | jq -r '.postal')
     timezone=$(echo "$response" | jq -r '.timezone')
-
-    # Get last entry
-    LAST_ENTRY=$(tail -1 "$LOG_FILE")
-    LAST_IP=$(echo "$LAST_ENTRY" | cut -d, -f2)
-
-    if [ "$ip" != "$LAST_IP" ]; then
+    
+    # Get last valid IP from log file
+    LAST_IP=$(get_last_valid_ip "$LOG_FILE")
+    
+    if [ -z "$LAST_IP" ] || [ "$ip" != "$LAST_IP" ]; then
         # Log new entry
         echo "$NOW,$ip,$hostname,$city,$region,$country,$loc,$org,$postal,$timezone" >> "$LOG_FILE"
-
+        
         # Update NextDNS
-        nextdns_response=$(curl -s -o /dev/null -w "%{http_code}" "https://link-ip.nextdns.io/YOUR_NEXTDNS_PROFILE/YOUR_NEXTDNS_IP_LINK_URL")
+        nextdns_response=$(curl -s -o /dev/null -w "%{http_code}" "https://link-ip.nextdns.io/YOUR_NEXTDNS_PROFILE/YOUR_NEXTDNS_IP_LINK_TOKEN")
         if [ "$nextdns_response" != "200" ]; then
             send_notification "NextDNS Update Failed" "IP changed but NextDNS update failed. Status: $nextdns_response" "5"
         fi
-
+        
         # Send notification about IP change
-        send_notification "IP Address Changed" "New IP: $ip\nLocation: $city, $region, $country\nISP: $org" "4"
+        if [ -z "$LAST_IP" ]; then
+            send_notification "IP Address Logged" "Initial IP: $ip Location: $city, $region, $country ISP: $org" "4"
+        else
+            send_notification "IP Address Changed" "New IP: $ip Previous IP: $LAST_IP Location: $city, $region, $country ISP: $org" "4"
+        fi
     fi
 else
     # Log error
-    echo "$NOW,error,,,,,,,,," >> "$LOG_FILE"
-
+    echo "$NOW,,,,,,,,,," >> "$LOG_FILE"
+    
     # Send error notification
     send_notification "IP Monitoring Error" "Failed to fetch IP information after $MAX_RETRIES attempts" "5"
 fi

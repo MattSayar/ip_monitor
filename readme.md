@@ -20,6 +20,6 @@ Edit the following variables in `ip_monitor.sh`:
 IP_SERVICE="https://ipinfo.io?token=YOUR_IPINFO_TOKEN"  # Add your ipinfo.io token
 NTFY_TOPIC="YOUR_NTFY_TOPIC"                              # Add your ntfy.sh topic
 "YOUR_NEXTDNS_PROFILE"                               # Add your NextDNS profile id
-"YOUR_NEXTDNS_IP_LINK_URL"                   # Add your unique NextDNS IP link URL
+"YOUR_NEXTDNS_IP_LINK_TOKEN"               # Add your unique NextDNS IP link token
 "YOUR_EMAIL"                                        # email for ntfy.sh to send to
 ```
